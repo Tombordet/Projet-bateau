@@ -1,0 +1,72 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Télécommande Bateau - Micro:bit</title>
+    <style>
+        body { font-family: Arial, sans-serif; text-align: center; background-color: #f0f2f5; margin-top: 50px; }
+        button { font-size: 20px; padding: 15px 30px; margin: 10px; cursor: pointer; border-radius: 10px; border: none; background-color: #007bff; color: white; }
+        button:active { background-color: #0056b3; }
+        #connectBtn { background-color: #28a745; }
+        #status { font-weight: bold; margin: 20px; color: #333; }
+    </style>
+</head>
+<body>
+
+    <h1>Télécommande du Bateau</h1>
+    <p id="status">Déconnecté</p>
+    <button id="connectBtn" onclick="connectBluetooth()">Connexion Bluetooth</button>
+
+    <br><br>
+
+    <div>
+        <button onclick="sendData('B')">◀ Bâbord (-5°)</button>
+        <button onclick="sendData('M')">Milieu (90°)</button>
+        <button onclick="sendData('A')">Tribord (+5°) ▶</button>
+    </div>
+
+    <script>
+        let bluetoothDevice;
+        let uartCharacteristic;
+
+        const UART_SERVICE_UUID = "6e400001-b5a3-f393-e0a9-e50e24dcca9e";
+        const UART_TX_CHARACTERISTIC_UUID = "6e400002-b5a3-f393-e0a9-e50e24dcca9e";
+
+        async function connectBluetooth() {
+            try {
+                document.getElementById('status').innerText = "Recherche de la micro:bit...";
+                
+                bluetoothDevice = await navigator.bluetooth.requestDevice({
+                    filters: [{ namePrefix: "Micro:bit" }],
+                    optionalServices: [UART_SERVICE_UUID]
+                });
+
+                const server = await bluetoothDevice.gatt.connect();
+                const service = await server.getPrimaryService(UART_SERVICE_UUID);
+                uartCharacteristic = await service.getCharacteristic(UART_TX_CHARACTERISTIC_UUID);
+
+                document.getElementById('status').innerText = "Connecté ! ⚓";
+                document.getElementById('connectBtn').style.backgroundColor = "#6c757d";
+            } catch (error) {
+                console.error(error);
+                document.getElementById('status').innerText = "Échec de connexion : " + error;
+            }
+        }
+
+        async function sendData(command) {
+            if (!uartCharacteristic) {
+                alert("Veuillez d'abord connecter la micro:bit en Bluetooth !");
+                return;
+            }
+            try {
+                const encoder = new TextEncoder();
+                await uartCharacteristic.writeValue(encoder.encode(command + "\n"));
+                console.log("Commande envoyée : " + command);
+            } catch (error) {
+                console.error("Erreur d'envoi : ", error);
+            }
+        }
+    </script>
+</body>
+</html>
