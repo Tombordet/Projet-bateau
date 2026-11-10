@@ -3,64 +3,131 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Télécommande Bateau - Micro:bit</title>
+    <title>Télécommande Gouvernail - Bateau</title>
     <style>
+        :root {
+            --primary: #2563eb;
+            --success: #16a34a;
+            --bg: #f8fafc;
+            --card-bg: #ffffff;
+            --text: #1e293b;
+        }
         body {
-            font-family: Arial, sans-serif;
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
             text-align: center;
-            background-color: #f4f4f9;
+            background-color: var(--bg);
+            color: var(--text);
             margin: 0;
             padding: 20px;
         }
+        .container {
+            max-width: 400px;
+            margin: 0 auto;
+            background: var(--card-bg);
+            padding: 24px;
+            border-radius: 16px;
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.05);
+        }
         h1 {
-            color: #333;
+            font-size: 1.4rem;
+            margin-bottom: 8px;
+            color: var(--text);
         }
         #status {
-            font-weight: bold;
-            color: #d9534f;
-            margin: 15px 0;
+            font-size: 0.9rem;
+            font-weight: 600;
+            color: #dc2626;
+            margin-bottom: 20px;
+            padding: 8px;
+            background: #fee2e2;
+            border-radius: 8px;
         }
         .btn {
-            display: block;
-            width: 80%;
-            max-width: 300px;
-            margin: 15px auto;
-            padding: 15px;
-            font-size: 18px;
+            width: 100%;
+            padding: 14px;
+            font-size: 1rem;
+            font-weight: 600;
             color: white;
             border: none;
-            border-radius: 8px;
+            border-radius: 10px;
             cursor: pointer;
+            transition: opacity 0.2s;
+            margin-bottom: 12px;
         }
-        #connectBtn { background-color: #0275d8; }
-        .dirBtn { background-color: #5cb85c; }
-        .dirBtn:active { background-color: #4cae4c; }
+        #connectBtn { background-color: var(--primary); }
+        .btn:active { opacity: 0.85; }
+
+        .control-group {
+            margin: 24px 0;
+            padding: 16px;
+            background: #f1f5f9;
+            border-radius: 12px;
+        }
+        .control-group label {
+            display: block;
+            font-weight: 600;
+            margin-bottom: 10px;
+            font-size: 0.95rem;
+        }
+        input[type=range] {
+            width: 100%;
+            height: 8px;
+            border-radius: 4px;
+            outline: none;
+            accent-color: var(--primary);
+            margin-bottom: 8px;
+        }
+        .angle-display {
+            font-size: 1.1rem;
+            font-weight: bold;
+            color: var(--primary);
+        }
+        .btn-row {
+            display: flex;
+            gap: 10px;
+        }
+        .dirBtn {
+            flex: 1;
+            background-color: var(--success);
+            padding: 12px;
+            font-size: 0.9rem;
+            margin-bottom: 0;
+        }
     </style>
 </head>
 <body>
 
-    <h1>Télécommande du Bateau</h1>
-    <div id="status">Statut : Déconnecté</div>
+    <div class="container">
+        <h1>Gouvernail du Bateau</h1>
+        <div id="status">Statut : Déconnecté</div>
 
-    <button id="connectBtn" onclick="connectBluetooth()">Connexion Bluetooth</button>
+        <button id="connectBtn" class="btn" onclick="connectBluetooth()">Connexion Bluetooth</button>
 
-    <br><br>
+        <!-- Barre horizontale / Curseur d'angle -->
+        <div class="control-group">
+            <label for="angleSlider">Position de la Barre</label>
+            <input type="range" id="angleSlider" min="55" max="125" value="90" oninput="updateSliderValue(this.value)" onchange="sendAngle(this.value)">
+            <div class="angle-display"><span id="angleVal">90</span>°</div>
+        </div>
 
-    <button class="dirBtn" onclick="sendCommand('gauche')">◄ GAUCHE (Bâbord)</button>
-    <button class="dirBtn" onclick="sendCommand('centre')">• MILIEU (Centre)</button>
-    <button class="dirBtn" onclick="sendCommand('droite')">► DROITE (Tribord)</button>
+        <!-- Boutons de commande existants -->
+        <div class="btn-row">
+            <button class="btn dirBtn" onclick="sendCommand('gauche')">◄ Bâbord</button>
+            <button class="btn dirBtn" onclick="sendCommand('centre')">• Centre</button>
+            <button class="btn dirBtn" onclick="sendCommand('droite')">Tribord ►</button>
+        </div>
+    </div>
 
     <script>
         let bluetoothDevice;
         let uartCharacteristic;
 
-        // UUIDs standard UART pour Micro:bit
         const UART_SERVICE_UUID = "6e400001-b5a3-f393-e0a9-e50e24dcca9e";
         const UART_RX_CHARACTERISTIC_UUID = "6e400002-b5a3-f393-e0a9-e50e24dcca9e";
 
         async function connectBluetooth() {
             try {
-                document.getElementById('status').innerText = "Statut : Recherche de la micro:bit...";
+                document.getElementById('status').innerText = "Recherche en cours...";
                 
                 bluetoothDevice = await navigator.bluetooth.requestDevice({
                     filters: [{ namePrefix: "Micro" }, { services: [UART_SERVICE_UUID] }],
@@ -71,12 +138,13 @@
                 const service = await server.getPrimaryService(UART_SERVICE_UUID);
                 uartCharacteristic = await service.getCharacteristic(UART_RX_CHARACTERISTIC_UUID);
 
-                document.getElementById('status').innerText = "Statut : Connecté !";
-                document.getElementById('status').style.color = "#5cb85c";
+                const statusDiv = document.getElementById('status');
+                statusDiv.innerText = "Statut : Connecté";
+                statusDiv.style.color = "#16a34a";
+                statusDiv.style.background = "#dcfce7";
             } catch (error) {
                 console.error(error);
-                document.getElementById('status').innerText = "Statut : Échec de la connexion";
-                document.getElementById('status').style.color = "#d9534f";
+                document.getElementById('status').innerText = "Statut : Échec de connexion";
             }
         }
 
@@ -87,11 +155,24 @@
             }
             try {
                 const encoder = new TextEncoder();
-                // On envoie la commande avec un retour à la ligne pour correspondre au code MakeCode
-                const data = encoder.encode(cmd + "\n");
-                await uartCharacteristic.writeValue(data);
+                await uartCharacteristic.writeValue(encoder.encode(cmd + "\n"));
             } catch (error) {
-                console.error("Erreur lors de l'envoi : ", error);
+                console.error("Erreur d'envoi : ", error);
+            }
+        }
+
+        function updateSliderValue(val) {
+            document.getElementById('angleVal').innerText = val;
+        }
+
+        async function sendAngle(val) {
+            // Envoie l'angle directement sous forme de texte (ex: "ANGLE:90")
+            if (!uartCharacteristic) return;
+            try {
+                const encoder = new TextEncoder();
+                await uartCharacteristic.writeValue(encoder.encode("ANGLE:" + val + "\n"));
+            } catch (error) {
+                console.error("Erreur d'envoi de l'angle : ", error);
             }
         }
     </script>
