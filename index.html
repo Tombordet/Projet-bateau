@@ -110,7 +110,7 @@
             <div class="angle-display"><span id="angleVal">90</span>°</div>
         </div>
 
-        <!-- Boutons de commande existants -->
+        <!-- Boutons de commande -->
         <div class="btn-row">
             <button class="btn dirBtn" onclick="sendCommand('gauche')">◄ Bâbord</button>
             <button class="btn dirBtn" onclick="sendCommand('centre')">• Centre</button>
@@ -129,8 +129,9 @@
             try {
                 document.getElementById('status').innerText = "Recherche en cours...";
                 
+                // Filtre assoupli : cible uniquement le service UART pour éviter les échecs de sélection
                 bluetoothDevice = await navigator.bluetooth.requestDevice({
-                    filters: [{ namePrefix: "Micro" }, { services: [UART_SERVICE_UUID] }],
+                    filters: [{ services: [UART_SERVICE_UUID] }],
                     optionalServices: [UART_SERVICE_UUID]
                 });
 
@@ -166,7 +167,6 @@
         }
 
         async function sendAngle(val) {
-            // Envoie l'angle directement sous forme de texte (ex: "ANGLE:90")
             if (!uartCharacteristic) return;
             try {
                 const encoder = new TextEncoder();
