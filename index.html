@@ -125,29 +125,29 @@
         const UART_SERVICE_UUID = "6e400001-b5a3-f393-e0a9-e50e24dcca9e";
         const UART_RX_CHARACTERISTIC_UUID = "6e400002-b5a3-f393-e0a9-e50e24dcca9e";
 
-        async function connectBluetooth() {
-            try {
-                document.getElementById('status').innerText = "Recherche en cours...";
-                
-                // Utilisation d'un filtre par préfixe de nom (reconnaît "BBC micro:bit" ou "Micro:bit") avec le service optionnel
-                bluetoothDevice = await navigator.bluetooth.requestDevice({
-                    filters: [{ namePrefix: "Micro" }],
-                    optionalServices: [UART_SERVICE_UUID]
-                });
+      async function connectBluetooth() {
+    try {
+        document.getElementById('status').innerText = "Recherche en cours...";
+        
+        // Solution universelle : accepte tous les appareils pour forcer l'affichage, tout en ciblant le service UART
+        bluetoothDevice = await navigator.bluetooth.requestDevice({
+            acceptAllDevices: true,
+            optionalServices: [UART_SERVICE_UUID]
+        });
 
-                const server = await bluetoothDevice.gatt.connect();
-                const service = await server.getPrimaryService(UART_SERVICE_UUID);
-                uartCharacteristic = await service.getCharacteristic(UART_RX_CHARACTERISTIC_UUID);
+        const server = await bluetoothDevice.gatt.connect();
+        const service = await server.getPrimaryService(UART_SERVICE_UUID);
+        uartCharacteristic = await service.getCharacteristic(UART_RX_CHARACTERISTIC_UUID);
 
-                const statusDiv = document.getElementById('status');
-                statusDiv.innerText = "Statut : Connecté";
-                statusDiv.style.color = "#16a34a";
-                statusDiv.style.background = "#dcfce7";
-            } catch (error) {
-                console.error(error);
-                document.getElementById('status').innerText = "Statut : Échec de connexion";
-            }
-        }
+        const statusDiv = document.getElementById('status');
+        statusDiv.innerText = "Statut : Connecté";
+        statusDiv.style.color = "#16a34a";
+        statusDiv.style.background = "#dcfce7";
+    } catch (error) {
+        console.error(error);
+        document.getElementById('status').innerText = "Statut : Échec de connexion";
+    }
+}
 
         async function sendCommand(cmd) {
             if (!uartCharacteristic) {
