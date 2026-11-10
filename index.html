@@ -103,7 +103,7 @@
 
         <button id="connectBtn" class="btn" onclick="connectBluetooth()">Connexion Bluetooth</button>
 
-        <!-- Barre horizontale / Curseur d'angle -->
+        <!-- Curseur d'angle -->
         <div class="control-group">
             <label for="angleSlider">Position de la Barre</label>
             <input type="range" id="angleSlider" min="55" max="125" value="90" oninput="updateSliderValue(this.value)" onchange="sendAngle(this.value)">
@@ -129,9 +129,9 @@
             try {
                 document.getElementById('status').innerText = "Recherche en cours...";
                 
-                // Filtre assoupli : cible uniquement le service UART pour éviter les échecs de sélection
+                // Utilisation d'un filtre par préfixe de nom (reconnaît "BBC micro:bit" ou "Micro:bit") avec le service optionnel
                 bluetoothDevice = await navigator.bluetooth.requestDevice({
-                    filters: [{ services: [UART_SERVICE_UUID] }],
+                    filters: [{ namePrefix: "Micro" }],
                     optionalServices: [UART_SERVICE_UUID]
                 });
 
