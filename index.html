@@ -150,8 +150,10 @@
             }
             try {
                 const encoder = new TextEncoder();
-                const message = "ANGLE:" + val + "\n";
+                // Envoi direct de la valeur numérique brute suivie d'un retour à la ligne
+                const message = val + "\n";
                 await uartCharacteristic.writeValueWithoutResponse(encoder.encode(message));
+                console.log("Valeur envoyée :", val);
             } catch (error) {
                 console.error("Erreur d'envoi Bluetooth :", error);
             }
@@ -160,7 +162,7 @@
         function changeAngle(delta) {
             currentAngle += delta;
             
-            // Limites de sécurité du servo (55° à 125°)
+            // Bornes de sécurité du servo (55° à 125°)
             if (currentAngle < 55) currentAngle = 55;
             if (currentAngle > 125) currentAngle = 125;
 
