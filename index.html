@@ -65,7 +65,7 @@
             border-radius: 12px;
         }
         .angle-display {
-            font-size: 1.3rem;
+            font-size: 1.5rem;
             font-weight: bold;
             color: var(--primary);
             margin-top: 5px;
@@ -98,13 +98,13 @@
 
         <button id="connectBtn" class="btn" onclick="connectBluetooth()">Connexion Bluetooth</button>
 
-        <!-- Affichage de l'angle actuel -->
+        <!-- Affichage direct de l'angle -->
         <div class="control-group">
-            <div>Angle actuel de la barre</div>
+            <div>Angle actuel</div>
             <div class="angle-display"><span id="angleVal">90</span>°</div>
         </div>
 
-        <!-- Boutons de commande -->
+        <!-- Boutons de commande directs -->
         <div class="btn-row">
             <button class="btn dirBtn" onclick="changeAngle(-5)">◄ Bâbord</button>
             <button class="btn dirBtn" onclick="changeAngle(5)">Tribord ►</button>
@@ -113,9 +113,9 @@
     </div>
 
     <script>
-        let bluetoothDevice;
-        let uartCharacteristic;
-        let currentAngle = 90; // Position neutre initiale
+        let bluetoothDevice = null;
+        let uartCharacteristic = null;
+        let currentAngle = 90;
 
         const UART_SERVICE_UUID = "6e400001-b5a3-f393-e0a9-e50e24dcca9e";
         const UART_RX_CHARACTERISTIC_UUID = "6e400002-b5a3-f393-e0a9-e50e24dcca9e";
@@ -138,7 +138,7 @@
                 statusDiv.style.color = "#16a34a";
                 statusDiv.style.background = "#dcfce7";
             } catch (error) {
-                console.error(error);
+                console.error("Erreur de connexion:", error);
                 document.getElementById('status').innerText = "Statut : Échec de connexion";
             }
         }
@@ -150,16 +150,17 @@
             }
             try {
                 const encoder = new TextEncoder();
-                const data = encoder.encode("ANGLE:" + val + "\n");
-                await uartCharacteristic.writeValueWithoutResponse(data);
+                const message = "ANGLE:" + val + "\n";
+                await uartCharacteristic.writeValueWithoutResponse(encoder.encode(message));
             } catch (error) {
-                console.error("Erreur d'envoi : ", error);
+                console.error("Erreur d'envoi Bluetooth :", error);
             }
         }
 
-        // Modifie l'angle par pas de +5 ou -5 en respectant les limites (55° à 125°)
         function changeAngle(delta) {
             currentAngle += delta;
+            
+            // Bornes de sécurité du servo (55° à 125°)
             if (currentAngle < 55) currentAngle = 55;
             if (currentAngle > 125) currentAngle = 125;
 
@@ -167,7 +168,6 @@
             sendToMicrobit(currentAngle);
         }
 
-        // Remet l'angle exactement à 90°
         function resetAngle() {
             currentAngle = 90;
             document.getElementById('angleVal').innerText = currentAngle;
