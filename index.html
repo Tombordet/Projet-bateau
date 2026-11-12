@@ -8,6 +8,7 @@
         :root {
             --primary: #2563eb;
             --success: #16a34a;
+            --reset-btn: #475569;
             --bg: #f8fafc;
             --card-bg: #ffffff;
             --text: #1e293b;
@@ -85,10 +86,17 @@
         .btn-row {
             display: flex;
             gap: 10px;
+            margin-bottom: 10px;
         }
         .dirBtn {
             flex: 1;
             background-color: var(--success);
+            padding: 12px;
+            font-size: 0.9rem;
+            margin-bottom: 0;
+        }
+        .resetBtn {
+            background-color: var(--reset-btn);
             padding: 12px;
             font-size: 0.9rem;
             margin-bottom: 0;
@@ -113,9 +121,9 @@
         <!-- Boutons de commande -->
         <div class="btn-row">
             <button class="btn dirBtn" onclick="sendCommand('gauche')">◄ Bâbord</button>
-            <button class="btn dirBtn" onclick="sendCommand('centre')">• Centre</button>
             <button class="btn dirBtn" onclick="sendCommand('droite')">Tribord ►</button>
         </div>
+        <button class="btn resetBtn" onclick="resetToCenter()">Remise à 0 (90°)</button>
     </div>
 
     <script>
@@ -144,7 +152,7 @@
                 statusDiv.style.background = "#dcfce7";
             } catch (error) {
                 console.error(error);
-                document.getElementById('status').innerText = "Statut : Échec de connexion";
+                document.getElementById('status'].innerText = "Statut : Échec de connexion";
             }
         }
 
@@ -175,6 +183,14 @@
             } catch (error) {
                 console.error("Erreur d'envoi de l'angle : ", error);
             }
+        }
+
+        // Fonction pour forcer le slider à 90° et envoyer la commande centre
+        async function resetToCenter() {
+            const slider = document.getElementById('angleSlider');
+            slider.value = 90;
+            updateSliderValue(90);
+            await sendCommand('centre');
         }
     </script>
 
