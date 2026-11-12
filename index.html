@@ -134,7 +134,7 @@
                 uartCharacteristic = await service.getCharacteristic(UART_RX_CHARACTERISTIC_UUID);
 
                 const statusDiv = document.getElementById('status');
-                statusDiv.innerText = "Statut : Connecté";
+                statusDiv.innerText = "Statut : Connecté ✓";
                 statusDiv.style.color = "#16a34a";
                 statusDiv.style.background = "#dcfce7";
             } catch (error) {
@@ -150,12 +150,14 @@
             }
             try {
                 const encoder = new TextEncoder();
-                // Envoi direct de la valeur numérique brute suivie d'un retour à la ligne
                 const message = val + "\n";
-                await uartCharacteristic.writeValueWithoutResponse(encoder.encode(message));
-                console.log("Valeur envoyée :", val);
+                
+                // UTILISATION DE WRITE (AVEC RÉPONSE) POUR IOS / BLUEFY
+                await uartCharacteristic.writeValue(encoder.encode(message));
+                console.log("Valeur envoyée et confirmée :", val);
             } catch (error) {
                 console.error("Erreur d'envoi Bluetooth :", error);
+                alert("Erreur d'envoi : " + error.message);
             }
         }
 
