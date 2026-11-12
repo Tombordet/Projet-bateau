@@ -111,19 +111,20 @@
 
         <button id="connectBtn" class="btn" onclick="connectBluetooth()">Connexion Bluetooth</button>
 
-        <!-- Curseur d'angle -->
+        <!-- Curseur d'angle (Jauge interactive) -->
         <div class="control-group">
             <label for="angleSlider">Position de la Barre</label>
-            <input type="range" id="angleSlider" min="55" max="125" value="90" oninput="updateSliderValue(this.value)" onchange="sendAngle(this.value)">
+            <!-- L'événement 'input' permet de modifier l'angle en temps réel pendant qu'on glisse -->
+            <input type="range" id="angleSlider" min="55" max="125" value="90" oninput="onSliderMove(this.value)">
             <div class="angle-display"><span id="angleVal">90</span>°</div>
         </div>
 
-        <!-- Boutons de commande -->
+        <!-- Boutons de commande synchronisés avec la barre -->
         <div class="btn-row">
-            <button class="btn dirBtn" onclick="sendCommand('gauche')">◄ Bâbord</button>
-            <button class="btn dirBtn" onclick="sendCommand('droite')">Tribord ►</button>
+            <button class="btn dirBtn" onclick="adjustAngle(-5)">◄ Bâbord (-5°)</button>
+            <button class="btn dirBtn" onclick="adjustAngle(5)">Tribord ► (+5°)</button>
         </div>
-        <button class="btn resetBtn" onclick="resetToCenter()">Remise à 0 (90°)</button>
+        <button class="btn resetBtn" onclick="setAngle(90)">Remise à 0 (90°)</button>
     </div>
 
     <script>
@@ -152,29 +153,12 @@
                 statusDiv.style.background = "#dcfce7";
             } catch (error) {
                 console.error(error);
-                document.getElementById('status'].innerText = "Statut : Échec de connexion";
+                document.getElementById('status').innerText = "Statut : Échec de connexion";
             }
         }
 
-        async function sendCommand(cmd) {
-            if (!uartCharacteristic) {
-                alert("Veuillez d'abord vous connecter en Bluetooth !");
-                return;
-            }
-            try {
-                const encoder = new TextEncoder();
-                const data = encoder.encode(cmd + "\n");
-                await uartCharacteristic.writeValueWithoutResponse(data);
-            } catch (error) {
-                console.error("Erreur d'envoi : ", error);
-            }
-        }
-
-        function updateSliderValue(val) {
-            document.getElementById('angleVal').innerText = val;
-        }
-
-        async function sendAngle(val) {
+        // Envoi de la valeur précise de l'angle à la micro:bit via Bluetooth
+        async function sendAngleToMicrobit(val) {
             if (!uartCharacteristic) return;
             try {
                 const encoder = new TextEncoder();
@@ -185,12 +169,33 @@
             }
         }
 
-        // Fonction pour forcer le slider à 90° et envoyer la commande centre
-        async function resetToCenter() {
+        // Appelée en glissant le curseur horizontal à la main
+        function onSliderMove(val) {
+            document.getElementById('angleVal').innerText = val;
+            sendAngleToMicrobit(val);
+        }
+
+        // Appelée par les boutons Bâbord / Tribord pour faire varier l'angle par pas de 5°
+        function adjustAngle(delta) {
             const slider = document.getElementById('angleSlider');
-            slider.value = 90;
-            updateSliderValue(90);
-            await sendCommand('centre');
+            let currentVal = parseInt(slider.value);
+            let newVal = currentVal + delta;
+
+            // Respect strict des limites de sécurité (55° à 125°)
+            if (newVal < 55) newVal = 55;
+            if (newVal > 125) newVal = 125;
+
+            slider.value = newVal;
+            document.getElementById('angleVal').innerText = newVal;
+            sendAngleToMicrobit(newVal);
+        }
+
+        // Appelée par le bouton Remise à 0 pour forcer le curseur et l'angle à 90°
+        function setAngle(val) {
+            const slider = document.getElementById('angleSlider');
+            slider.value = val;
+            document.getElementById('angleVal').innerText = val;
+            sendAngleToMicrobit(val);
         }
     </script>
 
