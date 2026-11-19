@@ -136,7 +136,7 @@ async function envoyerDernier() {
       catch (e) { await caractRX.writeValueWithoutResponse(donnees); }
       dernierEnvoye = aEnvoyer;
     }
-    message.textContent = "";
+       message.textContent = "Envoyé : " + dernierEnvoye;
   } catch (e) {
     message.textContent = "Envoi impossible : " + e.message;
   }
