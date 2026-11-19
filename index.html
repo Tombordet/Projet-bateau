@@ -132,8 +132,8 @@ async function envoyerDernier() {
     while (caractRX && dernierEnvoye !== angle) {
       var aEnvoyer = angle;
       var donnees = new TextEncoder().encode(aEnvoyer + "\n");
-      try { await caractRX.writeValueWithoutResponse(donnees); }
-      catch (e) { await caractRX.writeValue(donnees); }
+            try { await caractRX.writeValue(donnees); }
+      catch (e) { await caractRX.writeValueWithoutResponse(donnees); }
       dernierEnvoye = aEnvoyer;
     }
     message.textContent = "";
