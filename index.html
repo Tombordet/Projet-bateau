@@ -51,3 +51,184 @@
   .bornes { display: flex; justify-content: space-between; font-size: .8rem; color: var(--texte-doux); }
   input[type=range] { -webkit-appearance: none; appearance: none; width: 100%; height: 44px; background: transparent; margin: 0; }
   input[type=range]::-webkit-slider-runnable-track { height: 10px; border-radius: 5px; background: rgba(233,244,246,.18); }
+  input[type=range]::-moz-range-track { height: 10px; border-radius: 5px; background: rgba(233,244,246,.18); }
+  input[type=range]::-webkit-slider-thumb {
+    -webkit-appearance: none; width: 44px; height: 44px; margin-top: -17px; border-radius: 50%;
+    background: var(--bouee); border: 5px solid var(--ecume); box-shadow: 0 4px 14px rgba(0,0,0,.4);
+  }
+  input[type=range]::-moz-range-thumb { width: 34px; height: 34px; border-radius: 50%; background: var(--bouee); border: 5px solid var(--ecume); }
+
+  .boutons { display: grid; grid-template-columns: 1fr auto 1fr; gap: 12px; }
+  button {
+    font: inherit; font-weight: 700; font-size: 1.15rem; color: var(--texte);
+    border: 1px solid rgba(233,244,246,.2); background: rgba(233,244,246,.08);
+    border-radius: 18px; padding: 18px 12px; cursor: pointer;
+  }
+  button:active { background: rgba(233,244,246,.2); transform: scale(.97); }
+  button:focus-visible, input:focus-visible { outline: 3px solid var(--ecume); outline-offset: 3px; }
+  #centre { padding-inline: 22px; }
+  #connexion { background: var(--bouee); border-color: var(--bouee); color: #1b0a03; font-size: 1.1rem; padding: 18px; }
+  #connexion.connecte { background: transparent; color: var(--texte); border-color: rgba(233,244,246,.3); }
+  #message { min-height: 1.3em; text-align: center; font-size: .85rem; color: var(--texte-doux); margin: 0; }
+  @media (prefers-reduced-motion: reduce) { #gouvernail { transition: none; } }
+</style>
+</head>
+<body>
+<main>
+  <header>
+    <h1>Gouvernail</h1>
+    <div id="etat" role="status"><i></i><span>Non connecté</span></div>
+  </header>
+
+  <section class="scene" aria-label="Position du gouvernail">
+    <svg viewBox="0 0 200 270" aria-hidden="true">
+      <path d="M92 240 Q80 258 70 270 M108 240 Q120 258 130 270" stroke="rgba(233,244,246,.25)" stroke-width="3" fill="none" stroke-linecap="round"/>
+      <path d="M100 6 C150 50 156 130 148 200 Q146 232 100 236 Q54 232 52 200 C44 130 50 50 100 6 Z" fill="#e9f4f6"/>
+      <path d="M100 40 C128 76 132 130 126 196 Q124 214 100 216 Q76 214 74 196 C68 130 72 76 100 40 Z" fill="#0d4160"/>
+      <g id="gouvernail" style="transform-origin: 100px 236px;">
+        <rect x="95" y="232" width="10" height="34" rx="5" fill="#ff6a3d"/>
+      </g>
+    </svg>
+    <div class="valeur"><span id="angle">90</span><small>°</small></div>
+    <div id="sens">Tout droit</div>
+  </section>
+
+  <section class="reglage">
+    <input type="range" id="curseur" min="55" max="125" value="90" aria-label="Angle du gouvernail">
+    <div class="bornes"><span>Bâbord 55°</span><span>Tribord 125°</span></div>
+  </section>
+
+  <section class="boutons">
+    <button id="moins" aria-label="Moins 5 degrés">−5°</button>
+    <button id="centre">Centrer</button>
+    <button id="plus" aria-label="Plus 5 degrés">+5°</button>
+  </section>
+
+  <button id="connexion">Connecter la micro:bit</button>
+  <p id="message"></p>
+</main>
+
+<script>
+/* ---------- Réglages ---------- */
+const ANGLE_MIN = 55, ANGLE_MAX = 125, ANGLE_CENTRE = 90, PAS = 5;
+const INVERSER_VISUEL = false; // mets true si le gouvernail dessiné tourne à l'envers
+
+const UART_SERVICE = "6e400001-b5a0-f393-e0a9-e50e24dcca9e";
+const UART_RX      = "6e400002-b5a0-f393-e0a9-e50e24dcca9e"; // téléphone -> micro:bit
+
+const $ = (id) => document.getElementById(id);
+const curseur = $("curseur"), affAngle = $("angle"), sens = $("sens");
+const gouvernail = $("gouvernail"), etat = $("etat"), message = $("message"), btnConnexion = $("connexion");
+
+let angle = ANGLE_CENTRE;
+let caractRX = null;
+let appareil = null;
+let envoiEnCours = false;
+let dernierEnvoye = null;
+
+function afficher(a) {
+  angle = a;
+  affAngle.textContent = a;
+  curseur.value = a;
+  const ecart = a - ANGLE_CENTRE;
+  gouvernail.style.transform = "rotate(" + (INVERSER_VISUEL ? ecart : -ecart) + "deg)";
+  sens.textContent = ecart === 0 ? "Tout droit"
+    : ecart > 0 ? "Tribord (droite) +" + ecart + "°" : "Bâbord (gauche) " + ecart + "°";
+}
+
+function statut(texte, classe) {
+  etat.className = classe || "";
+  etat.querySelector("span").textContent = texte;
+}
+
+/* Envoi Bluetooth : un message à la fois, toujours le dernier angle demandé */
+async function envoyerDernier() {
+  if (envoiEnCours || !caractRX) return;
+  envoiEnCours = true;
+  try {
+    while (caractRX && dernierEnvoye !== angle) {
+      const aEnvoyer = angle;
+      const donnees = new TextEncoder().encode(aEnvoyer + "\n");
+      try { await caractRX.writeValueWithoutResponse(donnees); }
+      catch (e) { await caractRX.writeValue(donnees); }
+      dernierEnvoye = aEnvoyer;
+    }
+    message.textContent = "";
+  } catch (e) {
+    message.textContent = "Envoi impossible : " + e.message;
+  }
+  envoiEnCours = false;
+}
+
+function commander(a) {
+  a = Math.max(ANGLE_MIN, Math.min(ANGLE_MAX, Math.round(a)));
+  afficher(a);
+  if (!caractRX) { message.textContent = "Connecte d'abord la micro:bit."; return; }
+  envoyerDernier();
+}
+
+async function connecter() {
+  if (!navigator.bluetooth) {
+    message.textContent = "Bluetooth indisponible : ouvre cette page dans l'application Bluefy.";
+    return;
+  }
+  try {
+    statut("Recherche…");
+    appareil = await navigator.bluetooth.requestDevice({
+      filters: [{ namePrefix: "BBC micro:bit" }],
+      optionalServices: [UART_SERVICE]
+    });
+    appareil.addEventListener("gattserverdisconnected", deconnecte);
+    statut("Connexion…");
+    const serveur = await appareil.gatt.connect();
+    const service = await serveur.getPrimaryService(UART_SERVICE);
+    caractRX = await service.getCharacteristic(UART_RX);
+    dernierEnvoye = null;
+    statut("Connecté", "ok");
+    btnConnexion.textContent = "Déconnecter";
+    btnConnexion.classList.add("connecte");
+    message.textContent = "";
+    commander(angle);
+  } catch (e) {
+    caractRX = null;
+    statut("Non connecté", "ko");
+    message.textContent = e.name === "NotFoundError" ? "Aucune micro:bit choisie." : "Erreur : " + e.message;
+  }
+}
+
+function deconnecte() {
+  caractRX = null;
+  statut("Déconnecté", "ko");
+  btnConnexion.textContent = "Connecter la micro:bit";
+  btnConnexion.classList.remove("connecte");
+}
+
+btnConnexion.addEventListener("click", () => {
+  if (appareil && appareil.gatt.connected) appareil.gatt.disconnect();
+  else connecter();
+});
+
+curseur.addEventListener("input", () => commander(parseInt(curseur.value, 10)));
+$("centre").addEventListener("click", () => commander(ANGLE_CENTRE));
+
+/* Les boutons ±5° se répètent tant qu'on les maintient appuyés */
+function boutonRepete(id, delta) {
+  const b = $(id);
+  let attente = null, boucle = null;
+  const arreter = () => { clearTimeout(attente); clearInterval(boucle); };
+  b.addEventListener("pointerdown", (e) => {
+    e.preventDefault();
+    commander(angle + delta);
+    arreter();
+    attente = setTimeout(() => { boucle = setInterval(() => commander(angle + delta), 120); }, 350);
+  });
+  ["pointerup", "pointerleave", "pointercancel"].forEach((ev) => b.addEventListener(ev, arreter));
+  b.addEventListener("contextmenu", (e) => e.preventDefault());
+}
+boutonRepete("plus", PAS);
+boutonRepete("moins", -PAS);
+
+afficher(ANGLE_CENTRE);
+</script>
+</body>
+</html>
