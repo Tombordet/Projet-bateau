@@ -1,73 +1,53 @@
-<script>
-    let bluetoothDevice = null;
-    let uartCharacteristic = null;
-    let currentAngle = 90;
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#06283d">
+<title>Gouvernail du bateau</title>
+<style>
+  :root {
+    --mer: #06283d;
+    --mer-claire: #0d4160;
+    --ecume: #e9f4f6;
+    --bouee: #ff6a3d;
+    --ok: #3ddc97;
+    --erreur: #ff5d5d;
+    --texte: #e9f4f6;
+    --texte-doux: #8fb4c4;
+  }
+  * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+  html, body { margin: 0; min-height: 100%; }
+  body {
+    font-family: "Avenir Next", "Trebuchet MS", "Segoe UI", sans-serif;
+    background: radial-gradient(120% 80% at 50% 0%, var(--mer-claire) 0%, var(--mer) 60%) fixed;
+    color: var(--texte);
+    padding: max(16px, env(safe-area-inset-top)) 16px max(24px, env(safe-area-inset-bottom));
+    display: flex; flex-direction: column; align-items: center;
+    user-select: none; -webkit-user-select: none; touch-action: manipulation;
+  }
+  main { width: 100%; max-width: 440px; display: flex; flex-direction: column; gap: 20px; }
 
-    const UART_SERVICE_UUID = "6e400001-b5a3-f393-e0a9-e50e24dcca9e";
-    const UART_RX_CHARACTERISTIC_UUID = "6e400002-b5a3-f393-e0a9-e50e24dcca9e";
+  header { display: flex; justify-content: space-between; align-items: center; gap: 12px; }
+  h1 { font-size: 1.3rem; margin: 0; letter-spacing: .02em; font-weight: 700; }
+  #etat { display: flex; align-items: center; gap: 8px; font-size: .85rem; color: var(--texte-doux); }
+  #etat i { width: 10px; height: 10px; border-radius: 50%; background: var(--texte-doux); display: inline-block; }
+  #etat.ok i { background: var(--ok); box-shadow: 0 0 10px var(--ok); }
+  #etat.ko i { background: var(--erreur); }
 
-    function setStatus(text, ok) {
-        const s = document.getElementById('status');
-        s.innerText = text;
-        s.style.color = ok ? "#16a34a" : "#dc2626";
-        s.style.background = ok ? "#dcfce7" : "#fee2e2";
-    }
+  .scene {
+    border-radius: 28px; padding: 16px 0 8px;
+    background: linear-gradient(180deg, rgba(255,255,255,.06), rgba(255,255,255,.02));
+    border: 1px solid rgba(233,244,246,.12);
+    display: flex; flex-direction: column; align-items: center;
+  }
+  .scene svg { width: 62%; max-width: 250px; height: auto; display: block; overflow: visible; }
+  #gouvernail { transition: transform .12s ease-out; }
+  .valeur { font-size: 4.2rem; font-weight: 700; line-height: 1; font-variant-numeric: tabular-nums; margin-top: 4px; }
+  .valeur small { font-size: 1.6rem; color: var(--texte-doux); font-weight: 400; }
+  #sens { color: var(--texte-doux); font-size: .95rem; margin: 4px 0 8px; min-height: 1.2em; }
 
-    async function connectBluetooth() {
-        try {
-            setStatus("Recherche en cours...", false);
-
-            bluetoothDevice = await navigator.bluetooth.requestDevice({
-                filters: [{ namePrefix: "BBC micro:bit" }],
-                optionalServices: [UART_SERVICE_UUID]
-            });
-
-            bluetoothDevice.addEventListener('gattserverdisconnected', () => {
-                uartCharacteristic = null;
-                setStatus("Statut : Déconnecté", false);
-            });
-
-            const server = await bluetoothDevice.gatt.connect();
-            const service = await server.getPrimaryService(UART_SERVICE_UUID);
-            uartCharacteristic = await service.getCharacteristic(UART_RX_CHARACTERISTIC_UUID);
-
-            setStatus("Statut : Connecté ✓", true);
-        } catch (error) {
-            console.error(error);
-            setStatus("Échec : " + error.message, false);
-        }
-    }
-
-    async function sendToMicrobit(val) {
-        if (!uartCharacteristic) {
-            alert("Veuillez d'abord vous connecter en Bluetooth !");
-            return;
-        }
-        const data = new TextEncoder().encode(val + "\n");
-        try {
-            if (uartCharacteristic.writeValueWithoutResponse) {
-                await uartCharacteristic.writeValueWithoutResponse(data);
-            } else {
-                await uartCharacteristic.writeValue(data);
-            }
-        } catch (e1) {
-            try {
-                await uartCharacteristic.writeValue(data);
-            } catch (e2) {
-                alert("Erreur d'envoi : " + e2.message);
-            }
-        }
-    }
-
-    function changeAngle(delta) {
-        currentAngle = Math.min(125, Math.max(55, currentAngle + delta));
-        document.getElementById('angleVal').innerText = currentAngle;
-        sendToMicrobit(currentAngle);
-    }
-
-    function resetAngle() {
-        currentAngle = 90;
-        document.getElementById('angleVal').innerText = currentAngle;
-        sendToMicrobit(currentAngle);
-    }
-</script>
+  .reglage { display: flex; flex-direction: column; gap: 8px; }
+  .bornes { display: flex; justify-content: space-between; font-size: .8rem; color: var(--texte-doux); }
+  input[type=range] { -webkit-appearance: none; appearance: none; width: 100%; height: 44px; background: transparent; margin: 0; }
+  input[type=range]::-webkit-slider-runnable-track { height: 10px; border-radius: 5px; background: rgba(233,244,246,.18); }
