@@ -165,6 +165,7 @@ async function connecter() {
     appareil.addEventListener("gattserverdisconnected", deconnecte);
     statut("Connexion…");
     var serveur = await appareil.gatt.connect();
+       await new Promise(function (r) { setTimeout(r, 1000); });
     var service = await serveur.getPrimaryService(UART_SERVICE);
     caractRX = await service.getCharacteristic(UART_RX);
     dernierEnvoye = null;
