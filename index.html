@@ -150,6 +150,36 @@ function commander(a) {
   envoyerDernier();
 }
 
+async function trouverUART(serveur) {
+  // Essaie plusieurs fois : la micro:bit peut mettre un instant à publier ses services
+  for (var essai = 0; essai < 3; essai++) {
+    try {
+      return await serveur.getPrimaryService(UART_SERVICE);
+    } catch (e1) {
+      try {
+        var tous = await serveur.getPrimaryServices();
+        for (var i = 0; i < tous.length; i++) {
+          if (tous[i].uuid.toLowerCase().indexOf("6e400001") === 0) return tous[i];
+        }
+      } catch (e2) {}
+    }
+    await new Promise(function (r) { setTimeout(r, 800); });
+  }
+  throw new Error("service UART introuvable");
+}
+
+async function trouverRX(service) {
+  try {
+    return await service.getCharacteristic(UART_RX);
+  } catch (e1) {
+    var toutes = await service.getCharacteristics();
+    for (var i = 0; i < toutes.length; i++) {
+      if (toutes[i].uuid.toLowerCase().indexOf("6e400002") === 0) return toutes[i];
+    }
+    throw new Error("caractéristique d'écriture introuvable");
+  }
+}
+
 async function connecter() {
   var etape = "démarrage";
   if (!navigator.bluetooth) {
@@ -171,20 +201,10 @@ async function connecter() {
     await new Promise(function (r) { setTimeout(r, 1000); });
 
     etape = "recherche du service UART";
-    var service;
-    try {
-      service = await serveur.getPrimaryService(UART_SERVICE);
-    } catch (e1) {
-      var liste = [];
-      try {
-        var tous = await serveur.getPrimaryServices();
-        for (var i = 0; i < tous.length; i++) liste.push(tous[i].uuid.slice(0, 8));
-      } catch (e2) {}
-      throw new Error("service UART introuvable. Services vus : " + (liste.length ? liste.join(", ") : "aucun"));
-    }
+    var service = await trouverUART(serveur);
 
     etape = "recherche de la caractéristique";
-    caractRX = await service.getCharacteristic(UART_RX);
+    caractRX = await trouverRX(service);
 
     dernierEnvoye = null;
     statut("Connecté", "ok");
@@ -204,7 +224,6 @@ async function connecter() {
     }
   }
 }
-
 function deconnecte() {
   caractRX = null;
   statut("Déconnecté", "ko");
