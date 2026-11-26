@@ -151,23 +151,41 @@ function commander(a) {
 }
 
 async function connecter() {
+  var etape = "démarrage";
   if (!navigator.bluetooth) {
     message.textContent = "Bluetooth indisponible : ouvre cette page dans l'application Bluefy.";
     return;
   }
   try {
     statut("Recherche…");
-    // Pas de filtre sur le nom : la micro:bit apparaît même si elle n'envoie pas son nom
+    etape = "choix de l'appareil";
     appareil = await navigator.bluetooth.requestDevice({
       acceptAllDevices: true,
       optionalServices: [UART_SERVICE]
     });
     appareil.addEventListener("gattserverdisconnected", deconnecte);
     statut("Connexion…");
+
+    etape = "connexion GATT";
     var serveur = await appareil.gatt.connect();
-       await new Promise(function (r) { setTimeout(r, 1000); });
-    var service = await serveur.getPrimaryService(UART_SERVICE);
+    await new Promise(function (r) { setTimeout(r, 1000); });
+
+    etape = "recherche du service UART";
+    var service;
+    try {
+      service = await serveur.getPrimaryService(UART_SERVICE);
+    } catch (e1) {
+      var liste = [];
+      try {
+        var tous = await serveur.getPrimaryServices();
+        for (var i = 0; i < tous.length; i++) liste.push(tous[i].uuid.slice(0, 8));
+      } catch (e2) {}
+      throw new Error("service UART introuvable. Services vus : " + (liste.length ? liste.join(", ") : "aucun"));
+    }
+
+    etape = "recherche de la caractéristique";
     caractRX = await service.getCharacteristic(UART_RX);
+
     dernierEnvoye = null;
     statut("Connecté", "ok");
     btnConnexion.textContent = "Déconnecter";
@@ -177,8 +195,13 @@ async function connecter() {
   } catch (e) {
     caractRX = null;
     statut("Non connecté", "ko");
-    if (e.name === "NotFoundError") message.textContent = "Aucun appareil choisi.";
-    else message.textContent = "Erreur : " + e.message + " (choisis bien la micro:bit)";
+    var detail = (e && e.message) ? e.message : String(e);
+    var nom = (e && e.name) ? e.name + " - " : "";
+    if (e && e.name === "NotFoundError" && etape === "choix de l'appareil") {
+      message.textContent = "Aucun appareil choisi.";
+    } else {
+      message.textContent = "Échec à l'étape « " + etape + " » : " + nom + detail;
+    }
   }
 }
 
